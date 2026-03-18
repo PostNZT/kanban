@@ -53,6 +53,9 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interactio
 # Copy application source
 COPY . .
 
+# Create .env so Symfony Dotenv doesn't crash (real values come from Railway env vars)
+RUN echo "APP_ENV=prod" > .env
+
 # Copy built frontend assets from node stage
 COPY --from=node-builder /app/public/build/ public/build/
 

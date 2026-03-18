@@ -38,9 +38,18 @@ jest.mock('../../../api/columns', () => ({
 }));
 
 const mockNavigate = jest.fn();
+const mockShowToast = jest.fn();
 jest.mock('react-router-dom', () => ({
     ...jest.requireActual('react-router-dom'),
     useNavigate: () => mockNavigate,
+}));
+
+jest.mock('../../../context/ToastContext', () => ({
+    useToast: () => ({
+        toasts: [],
+        showToast: mockShowToast,
+        removeToast: jest.fn(),
+    }),
 }));
 
 import BoardView from '../../../components/board/BoardView';

@@ -14,9 +14,18 @@ jest.mock('../../../api/auth', () => ({
 }));
 
 const mockNavigate = jest.fn();
+const mockShowToast = jest.fn();
 jest.mock('react-router-dom', () => ({
     ...jest.requireActual('react-router-dom'),
     useNavigate: () => mockNavigate,
+}));
+
+jest.mock('../../../context/ToastContext', () => ({
+    useToast: () => ({
+        toasts: [],
+        showToast: mockShowToast,
+        removeToast: jest.fn(),
+    }),
 }));
 
 import * as authApi from '../../../api/auth';
@@ -70,7 +79,7 @@ describe('LoginForm', () => {
         });
     });
 
-    test('shows error message on failed login', async () => {
+    test('shows error toast on failed login', async () => {
         const user = userEvent.setup();
         (authApi.login as jest.Mock).mockRejectedValue(new Error('Invalid credentials'));
 
@@ -81,7 +90,7 @@ describe('LoginForm', () => {
         await user.click(screen.getByRole('button', { name: /login/i }));
 
         await waitFor(() => {
-            expect(screen.getByText(/invalid email or password/i)).toBeInTheDocument();
+            expect(mockShowToast).toHaveBeenCalledWith('Invalid email or password.', 'error');
         });
     });
 

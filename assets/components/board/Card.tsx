@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Card } from '../../types';
 import { useBoard } from '../../context/BoardContext';
+import { useToast } from '../../context/ToastContext';
 import { snapshotBoard } from '../../reducers/boardReducer';
 import * as cardsApi from '../../api/cards';
 
@@ -13,14 +14,19 @@ interface CardItemProps {
 
 export default function CardItem({ card, index, columnId }: CardItemProps) {
     const { state: board, dispatch } = useBoard();
+    const { showToast } = useToast();
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [title, setTitle] = useState<string>(card.title);
 
     const handleSave = () => {
         if (!title.trim()) return;
         const trimmed = title.trim();
-        const previousState = snapshotBoard(board);
+        if (trimmed === card.title) {
+            setIsEditing(false);
+            return;
+        }
 
+        const previousState = snapshotBoard(board);
         dispatch({
             type: 'UPDATE_CARD',
             payload: { id: card.id, title: trimmed, description: card.description },
@@ -29,6 +35,8 @@ export default function CardItem({ card, index, columnId }: CardItemProps) {
 
         cardsApi.updateCard(card.id, { title: trimmed }).catch(() => {
             dispatch({ type: 'ROLLBACK', payload: previousState });
+            setTitle(card.title);
+            showToast('Failed to update card.', 'error');
         });
     };
 
@@ -39,6 +47,7 @@ export default function CardItem({ card, index, columnId }: CardItemProps) {
         if (card.id > 0) {
             cardsApi.deleteCard(card.id).catch(() => {
                 dispatch({ type: 'ROLLBACK', payload: previousState });
+                showToast('Failed to delete card.', 'error');
             });
         }
     };

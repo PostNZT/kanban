@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { Board, BoardColumn as BoardColumnType } from '../../../types';
@@ -37,12 +37,21 @@ const mockBoard: Board = {
 };
 
 const mockDispatch = jest.fn();
+const mockShowToast = jest.fn();
 jest.mock('../../../context/BoardContext', () => ({
     useBoard: () => ({
         state: mockBoard,
         dispatch: mockDispatch,
     }),
     BoardProvider: ({ children }: any) => <>{children}</>,
+}));
+
+jest.mock('../../../context/ToastContext', () => ({
+    useToast: () => ({
+        toasts: [],
+        showToast: mockShowToast,
+        removeToast: jest.fn(),
+    }),
 }));
 
 jest.mock('../../../api/cards', () => ({
@@ -117,15 +126,19 @@ describe('Column', () => {
         expect(screen.getByDisplayValue('To Do')).toBeInTheDocument();
     });
 
-    test('delete column dispatches when confirmed', async () => {
+    test('delete column dispatches when confirmed with two clicks', async () => {
         const user = userEvent.setup();
-        jest.spyOn(window, 'confirm').mockReturnValue(true);
-
         renderColumn();
 
-        await user.click(screen.getByRole('button', { name: /delete column/i }));
+        const deleteBtn = screen.getByRole('button', { name: /delete column/i });
 
-        expect(window.confirm).toHaveBeenCalledWith('Delete "To Do" and all its cards?');
+        // First click enters confirmation state
+        await user.click(deleteBtn);
+        expect(mockDispatch).not.toHaveBeenCalled();
+        expect(screen.getByText('?')).toBeInTheDocument();
+
+        // Second click confirms deletion
+        await user.click(deleteBtn);
         expect(mockDispatch).toHaveBeenCalledWith({
             type: 'DELETE_COLUMN',
             payload: 1,
@@ -133,17 +146,26 @@ describe('Column', () => {
         expect(columnsApi.deleteColumn).toHaveBeenCalledWith(1);
     });
 
-    test('delete column cancelled on deny', async () => {
-        const user = userEvent.setup();
-        jest.spyOn(window, 'confirm').mockReturnValue(false);
-
+    test('delete column confirmation resets after timeout', async () => {
+        jest.useFakeTimers();
+        const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
         renderColumn();
 
-        await user.click(screen.getByRole('button', { name: /delete column/i }));
+        const deleteBtn = screen.getByRole('button', { name: /delete column/i });
 
-        expect(window.confirm).toHaveBeenCalled();
+        // First click enters confirmation state
+        await user.click(deleteBtn);
+        expect(screen.getByText('?')).toBeInTheDocument();
+
+        // After timeout, confirmation resets
+        act(() => {
+            jest.advanceTimersByTime(3000);
+        });
+
         expect(mockDispatch).not.toHaveBeenCalled();
         expect(columnsApi.deleteColumn).not.toHaveBeenCalled();
+
+        jest.useRealTimers();
     });
 
     test('edit save dispatches UPDATE_COLUMN and calls API', async () => {
@@ -243,12 +265,15 @@ describe('Column', () => {
 
     test('delete column rolls back on API failure', async () => {
         const user = userEvent.setup();
-        jest.spyOn(window, 'confirm').mockReturnValue(true);
         (columnsApi.deleteColumn as jest.Mock).mockRejectedValueOnce(new Error('API error'));
 
         renderColumn();
 
-        await user.click(screen.getByRole('button', { name: /delete column/i }));
+        const deleteBtn = screen.getByRole('button', { name: /delete column/i });
+
+        // Two clicks to confirm deletion
+        await user.click(deleteBtn);
+        await user.click(deleteBtn);
 
         await waitFor(() => {
             expect(mockDispatch).toHaveBeenCalledWith(

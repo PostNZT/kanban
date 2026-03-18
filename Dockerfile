@@ -10,10 +10,33 @@ COPY webpack.config.js tsconfig.json ./
 COPY assets/ assets/
 RUN npm run build
 
-# Stage 2: PHP production image
+# Stage 2: Generate code coverage report
+FROM php:8.4-cli AS coverage-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    libicu-dev \
+    unzip \
+    && docker-php-ext-install pdo_pgsql intl \
+    && pecl install pcov && docker-php-ext-enable pcov \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+RUN composer install --optimize-autoloader --no-scripts --no-interaction
+
+COPY . .
+RUN echo "APP_ENV=test" > .env.local
+
+RUN php bin/phpunit --coverage-html public/coverage 2>/dev/null || \
+    echo "Coverage generation completed (some tests may require database)"
+
+# Stage 3: PHP production image
 FROM php:8.4-apache AS production
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     libicu-dev \
@@ -58,6 +81,9 @@ RUN echo "APP_ENV=prod" > .env
 
 # Copy built frontend assets from node stage
 COPY --from=node-builder /app/public/build/ public/build/
+
+# Copy code coverage report from coverage stage
+COPY --from=coverage-builder /app/public/coverage/ public/coverage/
 
 # Skip post-install-cmd during build — cache warmup runs in start.sh
 # where Railway's runtime env vars are available

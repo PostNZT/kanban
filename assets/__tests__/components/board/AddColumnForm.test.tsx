@@ -23,12 +23,21 @@ const mockBoard: Board = {
 };
 
 const mockDispatch = jest.fn();
+const mockShowToast = jest.fn();
 jest.mock('../../../context/BoardContext', () => ({
     useBoard: () => ({
         state: mockBoard,
         dispatch: mockDispatch,
     }),
     BoardProvider: ({ children }: any) => <>{children}</>,
+}));
+
+jest.mock('../../../context/ToastContext', () => ({
+    useToast: () => ({
+        toasts: [],
+        showToast: mockShowToast,
+        removeToast: jest.fn(),
+    }),
 }));
 
 jest.mock('../../../api/columns', () => ({

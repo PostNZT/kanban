@@ -1,22 +1,22 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import { useToast } from '../../context/ToastContext';
 
 export default function RegisterForm() {
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [confirmPassword, setConfirmPassword] = useState<string>('');
-    const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const { register } = useAuth();
     const navigate = useNavigate();
+    const { showToast } = useToast();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setError('');
 
         if (password !== confirmPassword) {
-            setError('Passwords do not match.');
+            showToast('Passwords do not match.', 'warning');
             return;
         }
 
@@ -24,9 +24,10 @@ export default function RegisterForm() {
 
         try {
             await register(email, password);
+            showToast('Account created! Please log in.', 'success');
             navigate('/login');
         } catch {
-            setError('Registration failed. Email may already be in use.');
+            showToast('Registration failed. Email may already be in use.', 'error');
         } finally {
             setLoading(false);
         }
@@ -36,7 +37,6 @@ export default function RegisterForm() {
         <div className="auth-container">
             <form onSubmit={handleSubmit} className="auth-form">
                 <h2>Register</h2>
-                {error && <div className="error-message">{error}</div>}
                 <div className="form-group">
                     <label htmlFor="email">Email</label>
                     <input

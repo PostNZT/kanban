@@ -13,9 +13,18 @@ jest.mock('../../../api/auth', () => ({
 }));
 
 const mockNavigate = jest.fn();
+const mockShowToast = jest.fn();
 jest.mock('react-router-dom', () => ({
     ...jest.requireActual('react-router-dom'),
     useNavigate: () => mockNavigate,
+}));
+
+jest.mock('../../../context/ToastContext', () => ({
+    useToast: () => ({
+        toasts: [],
+        showToast: mockShowToast,
+        removeToast: jest.fn(),
+    }),
 }));
 
 import * as authApi from '../../../api/auth';
@@ -72,7 +81,7 @@ describe('RegisterForm', () => {
         });
     });
 
-    test('shows error when passwords do not match', async () => {
+    test('shows warning toast when passwords do not match', async () => {
         const user = userEvent.setup();
 
         renderRegisterForm();
@@ -82,11 +91,11 @@ describe('RegisterForm', () => {
         await user.type(screen.getByLabelText(/confirm password/i), 'Different1');
         await user.click(screen.getByRole('button', { name: /register/i }));
 
-        expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
+        expect(mockShowToast).toHaveBeenCalledWith('Passwords do not match.', 'warning');
         expect(authApi.register).not.toHaveBeenCalled();
     });
 
-    test('shows error message on API failure', async () => {
+    test('shows error toast on API failure', async () => {
         const user = userEvent.setup();
         (authApi.register as jest.Mock).mockRejectedValue(new Error('Email taken'));
 
@@ -98,7 +107,7 @@ describe('RegisterForm', () => {
         await user.click(screen.getByRole('button', { name: /register/i }));
 
         await waitFor(() => {
-            expect(screen.getByText(/registration failed/i)).toBeInTheDocument();
+            expect(mockShowToast).toHaveBeenCalledWith('Registration failed. Email may already be in use.', 'error');
         });
     });
 

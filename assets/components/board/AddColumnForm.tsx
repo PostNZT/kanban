@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useBoard } from '../../context/BoardContext';
+import { useToast } from '../../context/ToastContext';
 import { snapshotBoard } from '../../reducers/boardReducer';
 import * as columnsApi from '../../api/columns';
 
@@ -11,6 +12,7 @@ export default function AddColumnForm({ boardId }: AddColumnFormProps) {
     const [isOpen, setIsOpen] = useState<boolean>(false);
     const [title, setTitle] = useState<string>('');
     const { state: board, dispatch } = useBoard();
+    const { showToast } = useToast();
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -31,6 +33,7 @@ export default function AddColumnForm({ boardId }: AddColumnFormProps) {
             })
             .catch(() => {
                 dispatch({ type: 'ROLLBACK', payload: previousState });
+                showToast('Failed to add column.', 'error');
             });
     };
 

@@ -39,6 +39,12 @@
         </deprecationTrigger>
     </source>
 
+    <coverage>
+        <report>
+            <html outputDirectory="public/coverage" />
+        </report>
+    </coverage>
+
     <extensions>
     </extensions>
 </phpunit>

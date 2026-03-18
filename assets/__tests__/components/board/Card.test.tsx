@@ -19,6 +19,7 @@ jest.mock('@hello-pangea/dnd', () => ({
 }));
 
 const mockDispatch = jest.fn();
+const mockShowToast = jest.fn();
 jest.mock('../../../context/BoardContext', () => ({
     useBoard: () => ({
         state: {
@@ -41,6 +42,14 @@ jest.mock('../../../context/BoardContext', () => ({
         dispatch: mockDispatch,
     }),
     BoardProvider: ({ children }: any) => <>{children}</>,
+}));
+
+jest.mock('../../../context/ToastContext', () => ({
+    useToast: () => ({
+        toasts: [],
+        showToast: mockShowToast,
+        removeToast: jest.fn(),
+    }),
 }));
 
 jest.mock('../../../api/cards', () => ({

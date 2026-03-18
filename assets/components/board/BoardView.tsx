@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 import { useBoard } from '../../context/BoardContext';
+import { useToast } from '../../context/ToastContext';
 import { snapshotBoard } from '../../reducers/boardReducer';
 import * as boardsApi from '../../api/boards';
 import * as cardsApi from '../../api/cards';
@@ -13,6 +14,7 @@ export default function BoardView() {
     const { state, dispatch } = useBoard();
     const [loading, setLoading] = useState<boolean>(true);
     const navigate = useNavigate();
+    const { showToast } = useToast();
 
     useEffect(() => {
         if (!id) return;
@@ -20,9 +22,10 @@ export default function BoardView() {
             dispatch({ type: 'SET_BOARD', payload: board });
             setLoading(false);
         }).catch(() => {
+            showToast('Board not found.', 'error');
             navigate('/');
         });
-    }, [id, dispatch, navigate]);
+    }, [id, dispatch, navigate, showToast]);
 
     const onDragEnd = (result: DropResult) => {
         const { source, destination } = result;
@@ -51,6 +54,7 @@ export default function BoardView() {
             .moveCard(card.id, parseInt(destination.droppableId), destination.index)
             .catch(() => {
                 dispatch({ type: 'ROLLBACK', payload: previousState });
+                showToast('Failed to move card.', 'error');
             });
     };
 

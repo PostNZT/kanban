@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useBoard } from '../../context/BoardContext';
+import { useToast } from '../../context/ToastContext';
 import { snapshotBoard } from '../../reducers/boardReducer';
 import * as cardsApi from '../../api/cards';
 
@@ -11,6 +12,7 @@ export default function AddCardForm({ columnId }: AddCardFormProps) {
     const [isOpen, setIsOpen] = useState<boolean>(false);
     const [title, setTitle] = useState<string>('');
     const { state: board, dispatch } = useBoard();
+    const { showToast } = useToast();
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -31,6 +33,7 @@ export default function AddCardForm({ columnId }: AddCardFormProps) {
             })
             .catch(() => {
                 dispatch({ type: 'ROLLBACK', payload: previousState });
+                showToast('Failed to add card.', 'error');
             });
     };
 

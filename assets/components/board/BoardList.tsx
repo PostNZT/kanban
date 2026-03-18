@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BoardSummary } from '../../types';
+import { useToast } from '../../context/ToastContext';
 import * as boardsApi from '../../api/boards';
 
 export default function BoardList() {
@@ -8,6 +9,7 @@ export default function BoardList() {
     const [newTitle, setNewTitle] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(true);
     const navigate = useNavigate();
+    const { showToast } = useToast();
 
     useEffect(() => {
         boardsApi.getBoards().then((data) => {
@@ -20,13 +22,23 @@ export default function BoardList() {
         e.preventDefault();
         if (!newTitle.trim()) return;
 
-        const board = await boardsApi.createBoard(newTitle.trim());
-        navigate(`/boards/${board.id}`);
+        try {
+            const board = await boardsApi.createBoard(newTitle.trim());
+            showToast('Board created!', 'success');
+            navigate(`/boards/${board.id}`);
+        } catch {
+            showToast('Failed to create board.', 'error');
+        }
     };
 
     const handleDelete = async (id: string) => {
-        await boardsApi.deleteBoard(id);
-        setBoards(boards.filter((b) => b.id !== id));
+        try {
+            await boardsApi.deleteBoard(id);
+            setBoards((prev) => prev.filter((b) => b.id !== id));
+            showToast('Board deleted.', 'success');
+        } catch {
+            showToast('Failed to delete board.', 'error');
+        }
     };
 
     if (loading) return <div className="loading">Loading boards...</div>;

@@ -12,9 +12,18 @@ jest.mock('../../../api/boards', () => ({
 }));
 
 const mockNavigate = jest.fn();
+const mockShowToast = jest.fn();
 jest.mock('react-router-dom', () => ({
     ...jest.requireActual('react-router-dom'),
     useNavigate: () => mockNavigate,
+}));
+
+jest.mock('../../../context/ToastContext', () => ({
+    useToast: () => ({
+        toasts: [],
+        showToast: mockShowToast,
+        removeToast: jest.fn(),
+    }),
 }));
 
 import * as boardsApi from '../../../api/boards';

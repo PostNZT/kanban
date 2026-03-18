@@ -60,8 +60,8 @@ COPY --from=node-builder /app/public/build/ public/build/
 # where Railway's runtime env vars are available
 RUN composer dump-autoload --optimize
 
-# Set permissions for var/ directory
-RUN chown -R www-data:www-data var/
+# Create and set permissions for var/ directory (cache, logs)
+RUN mkdir -p var/cache var/log && chown -R www-data:www-data var/
 
 # Copy and prepare startup script
 COPY start.sh /usr/local/bin/start.sh

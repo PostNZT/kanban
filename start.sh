@@ -4,6 +4,9 @@ set -e
 echo "Running database migrations..."
 php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 
+echo "Installing assets..."
+php bin/console assets:install public --env=prod
+
 echo "Warming up cache..."
 php bin/console cache:warmup --env=prod
 

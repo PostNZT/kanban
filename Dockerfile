@@ -42,6 +42,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
+# Set APP_ENV at build time so Symfony skips .env file loading
+ENV APP_ENV=prod
+ENV APP_DEBUG=0
+
 # Install PHP dependencies (no dev)
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
@@ -52,8 +56,9 @@ COPY . .
 # Copy built frontend assets from node stage
 COPY --from=node-builder /app/public/build/ public/build/
 
-# Run Symfony post-install scripts (cache:clear, assets:install)
-RUN composer run-script post-install-cmd --no-interaction
+# Skip post-install-cmd during build — cache warmup runs in start.sh
+# where Railway's runtime env vars are available
+RUN composer dump-autoload --optimize
 
 # Set permissions for var/ directory
 RUN chown -R www-data:www-data var/

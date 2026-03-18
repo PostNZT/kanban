@@ -13,6 +13,7 @@ apiClient.interceptors.response.use(
     (error: AxiosError) => {
         if (error.response?.status === 401) {
             window.location.href = '/login';
+            return new Promise(() => {});
         }
         return Promise.reject(error);
     }

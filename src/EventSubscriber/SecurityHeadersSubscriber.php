@@ -26,6 +26,7 @@ class SecurityHeadersSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $request = $event->getRequest();
         $response = $event->getResponse();
         $headers = $response->headers;
 
@@ -37,7 +38,12 @@ class SecurityHeadersSubscriber implements EventSubscriberInterface
 
         if ($this->appEnv === 'prod') {
             $headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-            $headers->set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'");
+
+            // Skip CSP for Swagger UI page — it loads external Swagger scripts
+            $path = $request->getPathInfo();
+            if ($path !== '/api/doc') {
+                $headers->set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'");
+            }
         }
     }
 }

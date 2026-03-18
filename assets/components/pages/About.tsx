@@ -46,7 +46,7 @@ export default function About() {
                     <li><strong>React 19</strong> with functional components and hooks</li>
                     <li><strong>TypeScript</strong> for type safety across the entire frontend</li>
                     <li><strong>React Router 7</strong> for client-side routing with protected routes</li>
-                    <li><strong>Context API</strong> for global state management (AuthContext, BoardContext)</li>
+                    <li><strong>Context API</strong> for global state management (AuthContext, BoardContext, ToastContext)</li>
                     <li><strong>Drag and drop</strong> using @hello-pangea/dnd for card/column reordering</li>
                     <li><strong>Axios</strong> for HTTP client with interceptors for auth token handling</li>
                     <li><strong>Webpack Encore</strong> for asset bundling, code splitting, and hot reload</li>
@@ -59,7 +59,7 @@ export default function About() {
                     <li><strong>PHPUnit 12.5</strong> for backend unit and functional tests</li>
                     <li><strong>Jest 30</strong> with React Testing Library for frontend component tests</li>
                     <li><strong>Code coverage</strong> reports generated via PHPUnit HTML reporter</li>
-                    <li><strong>Test isolation</strong> using SQLite in-memory database for fast test execution</li>
+                    <li><strong>Test isolation</strong> using SQLite file-based database for fast test execution</li>
                 </ul>
             </section>
 
@@ -83,18 +83,6 @@ export default function About() {
                     <li>Security audit logging via event subscribers</li>
                     <li>Input validation using Symfony Validator component</li>
                     <li>Resource-level authorization with custom Voters</li>
-                </ul>
-            </section>
-
-            <section className="about-section">
-                <h2>Key Talking Points</h2>
-                <ul>
-                    <li><strong>Full-stack ownership:</strong> Designed and built both the API and frontend from scratch</li>
-                    <li><strong>Modern PHP:</strong> Leverages PHP 8.4 features with Symfony 8's latest patterns (attributes, typed properties)</li>
-                    <li><strong>Production-ready:</strong> Dockerized deployment, environment configuration, security headers, rate limiting</li>
-                    <li><strong>Testing discipline:</strong> Both backend and frontend test suites with coverage reporting</li>
-                    <li><strong>Real-time UX:</strong> Drag-and-drop board management with optimistic UI updates</li>
-                    <li><strong>Clean architecture:</strong> Separation of concerns with controllers, services, repositories, and voters</li>
                 </ul>
             </section>
         </div>

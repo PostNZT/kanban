@@ -31,8 +31,9 @@ RUN composer install --optimize-autoloader --no-scripts --no-interaction
 COPY . .
 RUN echo "APP_ENV=test" > .env.local
 
-RUN php bin/phpunit --coverage-html public/coverage 2>/dev/null || \
-    echo "Coverage generation completed (some tests may require database)"
+RUN mkdir -p public/coverage && \
+    php bin/console cache:warmup --env=test 2>/dev/null; \
+    php bin/phpunit --coverage-html public/coverage 2>&1 || true
 
 # Stage 3: PHP production image
 FROM php:8.4-apache AS production

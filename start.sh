@@ -10,7 +10,11 @@ php bin/console assets:install public --env=prod
 echo "Warming up cache..."
 php bin/console cache:warmup --env=prod
 
-# Configure Apache to listen on Railway's PORT (defaults to 8080)
+# Ensure only one MPM is loaded
+find /etc/apache2/mods-enabled -name 'mpm_*' -delete
+a2enmod mpm_prefork 2>/dev/null || true
+
+# Configure Apache to listen on Railway's PORT
 PORT="${PORT:-8080}"
 echo "Listen ${PORT}" > /etc/apache2/ports.conf
 sed -i "s/__PORT__/${PORT}/g" /etc/apache2/sites-available/000-default.conf

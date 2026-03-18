@@ -31,8 +31,8 @@ RUN { \
     echo 'opcache.enable_cli=1'; \
     } > /usr/local/etc/php/conf.d/opcache-prod.ini
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
+# Disable conflicting MPM modules, enable prefork + rewrite
+RUN a2dismod mpm_event && a2enmod mpm_prefork rewrite
 
 # Copy Apache config
 COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf

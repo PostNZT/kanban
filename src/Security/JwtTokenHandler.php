@@ -11,7 +11,7 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 class JwtTokenHandler implements AccessTokenHandlerInterface
 {
     private const ALGORITHM = 'HS256';
-    private const TOKEN_TTL = 1800; // 30 minutes
+    private const TOKEN_TTL = 86400; // 24 hours
 
     public function __construct(
         private readonly string $jwtSecret,

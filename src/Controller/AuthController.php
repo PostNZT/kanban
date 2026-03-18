@@ -19,6 +19,7 @@ class AuthController extends AbstractController
         private readonly AuthenticationService $authenticationService,
         private readonly RateLimiterFactory $loginLimiter,
         private readonly RateLimiterFactory $registrationLimiter,
+        private readonly string $appEnv,
     ) {
     }
 
@@ -86,14 +87,16 @@ class AuthController extends AbstractController
             'user' => $result['user'],
         ]);
 
+        $secure = $this->appEnv === 'prod';
+
         $response->headers->setCookie(
             \Symfony\Component\HttpFoundation\Cookie::create('jwt_token')
                 ->withValue($result['token'])
-                ->withExpires(time() + 1800)
+                ->withExpires(time() + 86400)
                 ->withPath('/')
                 ->withHttpOnly(true)
-                ->withSameSite('strict')
-                ->withSecure(true)
+                ->withSameSite($secure ? 'strict' : 'lax')
+                ->withSecure($secure)
         );
 
         return $response;
@@ -104,7 +107,8 @@ class AuthController extends AbstractController
     {
         $response = $this->json(['message' => 'Logged out.']);
 
-        $response->headers->clearCookie('jwt_token', '/', null, true, true, 'strict');
+        $secure = $this->appEnv === 'prod';
+        $response->headers->clearCookie('jwt_token', '/', null, $secure, true, $secure ? 'strict' : 'lax');
 
         return $response;
     }

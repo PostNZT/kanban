@@ -14,7 +14,7 @@ class SpaController extends AbstractController
         return $this->render('swagger/index.html.twig');
     }
 
-    #[Route('/{reactRouting}', name: 'spa', requirements: ['reactRouting' => '^(?!api).*'], defaults: ['reactRouting' => ''], priority: -1)]
+    #[Route('/{reactRouting}', name: 'spa', requirements: ['reactRouting' => '^(?!api|coverage).*'], defaults: ['reactRouting' => ''], priority: -1)]
     public function index(): Response
     {
         return $this->render('spa/index.html.twig');

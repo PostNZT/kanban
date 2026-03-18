@@ -31,3 +31,4 @@ services:
         arguments:
             $loginLimiter: '@limiter.login'
             $registrationLimiter: '@limiter.registration'
+            $appEnv: '%kernel.environment%'

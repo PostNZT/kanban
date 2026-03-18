@@ -42,8 +42,8 @@ class JwtTokenHandlerTest extends TestCase
         $this->assertSame('alice@example.com', $decoded->email);
         $this->assertGreaterThanOrEqual($before, $decoded->iat);
         $this->assertLessThanOrEqual($after, $decoded->iat);
-        $this->assertGreaterThanOrEqual($before + 1800, $decoded->exp);
-        $this->assertLessThanOrEqual($after + 1800, $decoded->exp);
+        $this->assertGreaterThanOrEqual($before + 86400, $decoded->exp);
+        $this->assertLessThanOrEqual($after + 86400, $decoded->exp);
     }
 
     public function testGetUserBadgeFromValidToken(): void
@@ -95,12 +95,12 @@ class JwtTokenHandlerTest extends TestCase
         $this->handler->getUserBadgeFrom($tokenWithWrongSecret);
     }
 
-    public function testTokenExpiresIn30Minutes(): void
+    public function testTokenExpiresIn24Hours(): void
     {
         $token = $this->handler->createToken(1, 'ttl@example.com');
 
         $decoded = JWT::decode($token, new Key(self::SECRET, 'HS256'));
 
-        $this->assertSame(1800, $decoded->exp - $decoded->iat);
+        $this->assertSame(86400, $decoded->exp - $decoded->iat);
     }
 }

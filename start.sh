@@ -11,8 +11,9 @@ echo "Warming up cache..."
 php bin/console cache:warmup --env=prod
 
 # Configure Apache to listen on Railway's PORT (defaults to 8080)
-export PORT="${PORT:-8080}"
-sed -i "s/Listen 80/Listen ${PORT}/" /etc/apache2/ports.conf
+PORT="${PORT:-8080}"
+echo "Listen ${PORT}" > /etc/apache2/ports.conf
+sed -i "s/__PORT__/${PORT}/g" /etc/apache2/sites-available/000-default.conf
 
 echo "Starting Apache on port ${PORT}..."
 exec apache2-foreground

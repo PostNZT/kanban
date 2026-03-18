@@ -1,0 +1,13 @@
+.git
+.github
+node_modules
+var
+.phpunit.cache
+coverage
+.env.local
+.env.*.local
+compose.yaml
+compose.override.yaml
+tests
+phpunit.dist.xml
+jest.config.ts

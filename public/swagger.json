@@ -1,0 +1,407 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Kanban Board API",
+    "description": "REST API for managing Kanban boards with columns and cards",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "/api", "description": "Local API" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Board": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "columns": { "type": "array", "items": { "$ref": "#/components/schemas/Column" } },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BoardSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Column": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "title": { "type": "string" },
+          "position": { "type": "integer" },
+          "cards": { "type": "array", "items": { "$ref": "#/components/schemas/Card" } }
+        }
+      },
+      "Card": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "position": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" }
+        }
+      }
+    }
+  },
+  "security": [{ "Bearer": [] }],
+  "paths": {
+    "/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Register a new user",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "user@example.com" },
+                  "password": { "type": "string", "format": "password", "example": "secret123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User registered" },
+          "400": { "description": "Missing fields" },
+          "409": { "description": "Email already in use" }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Authenticate and get JWT token",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "format": "password" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "JWT token and user info" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/boards": {
+      "get": {
+        "tags": ["Boards"],
+        "summary": "List all boards for the authenticated user",
+        "responses": {
+          "200": {
+            "description": "List of boards",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/BoardSummary" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Boards"],
+        "summary": "Create a new board with default columns",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "example": "My Board" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Board created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Board" }
+              }
+            }
+          },
+          "400": { "description": "Title is required" }
+        }
+      }
+    },
+    "/boards/{uuid}": {
+      "get": {
+        "tags": ["Boards"],
+        "summary": "Get a board with all columns and cards",
+        "parameters": [
+          { "name": "uuid", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Board details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Board" }
+              }
+            }
+          },
+          "404": { "description": "Board not found" }
+        }
+      },
+      "put": {
+        "tags": ["Boards"],
+        "summary": "Update board title",
+        "parameters": [
+          { "name": "uuid", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "example": "Updated Board" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Board updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Boards"],
+        "summary": "Delete a board",
+        "parameters": [
+          { "name": "uuid", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "204": { "description": "Board deleted" }
+        }
+      }
+    },
+    "/boards/{boardUuid}/columns": {
+      "post": {
+        "tags": ["Columns"],
+        "summary": "Add a column to a board",
+        "parameters": [
+          { "name": "boardUuid", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "example": "Review" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Column created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Column" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/columns/{id}": {
+      "put": {
+        "tags": ["Columns"],
+        "summary": "Update column title",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "example": "Backlog" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Column updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Columns"],
+        "summary": "Delete a column",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "204": { "description": "Column deleted" }
+        }
+      }
+    },
+    "/columns/reorder": {
+      "put": {
+        "tags": ["Columns"],
+        "summary": "Reorder columns within a board",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["boardId", "orderedColumnIds"],
+                "properties": {
+                  "boardId": { "type": "string", "format": "uuid", "description": "Board UUID" },
+                  "orderedColumnIds": { "type": "array", "items": { "type": "integer" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Columns reordered" }
+        }
+      }
+    },
+    "/columns/{columnId}/cards": {
+      "post": {
+        "tags": ["Cards"],
+        "summary": "Add a card to a column",
+        "parameters": [
+          { "name": "columnId", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "example": "New Task" },
+                  "description": { "type": "string", "nullable": true, "example": "Task details" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Card created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Card" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cards/{id}": {
+      "put": {
+        "tags": ["Cards"],
+        "summary": "Update card title or description",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Card updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Cards"],
+        "summary": "Delete a card",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "204": { "description": "Card deleted" }
+        }
+      }
+    },
+    "/cards/move": {
+      "put": {
+        "tags": ["Cards"],
+        "summary": "Move a card to a different column or position",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["cardId", "targetColumnId", "targetPosition"],
+                "properties": {
+                  "cardId": { "type": "integer" },
+                  "targetColumnId": { "type": "integer" },
+                  "targetPosition": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Card moved" }
+        }
+      }
+    }
+  }
+}

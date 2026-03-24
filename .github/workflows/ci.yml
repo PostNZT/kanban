@@ -35,7 +35,7 @@ jobs:
         run: php bin/console lint:container --env=test
 
       - name: Run PHPUnit
-        run: php bin/phpunit
+        run: php bin/phpunit --no-coverage
 
   js-test:
     name: JS Lint & Test

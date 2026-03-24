@@ -30,11 +30,13 @@ COPY composer.json composer.lock ./
 RUN composer install --optimize-autoloader --no-scripts --no-interaction
 
 COPY . .
-RUN echo "APP_ENV=test" > .env.local
 
-RUN mkdir -p public/coverage && \
-    php bin/console cache:warmup --env=test 2>/dev/null; \
-    php bin/phpunit --testsuite unit --coverage-html public/coverage 2>&1 || true
+# Set up test environment properly
+RUN mkdir -p var public/coverage && \
+    cp .env.test .env.local && \
+    php bin/console cache:warmup --env=test && \
+    php bin/phpunit --testsuite unit --coverage-html public/coverage || \
+    echo '<html><body><h1>Coverage report generation failed during build</h1></body></html>' > public/coverage/index.html
 
 # Stage 3: PHP production image
 FROM php:8.4-apache AS production

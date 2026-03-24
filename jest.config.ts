@@ -13,6 +13,7 @@ const config: Config = {
     '^.+\\.tsx?$': 'ts-jest',
   },
   testMatch: ['**/__tests__/**/*.test.ts?(x)'],
+  coverageReporters: ['text', 'lcov', 'html'],
 };
 
 export default config;

@@ -1,4 +1,4 @@
-# Stage 1: Build frontend assets
+# Stage 1: Build frontend assets and generate coverage
 FROM node:22-alpine AS node-builder
 
 WORKDIR /app
@@ -6,39 +6,14 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY webpack.config.js tsconfig.json ./
+COPY webpack.config.js tsconfig.json jest.config.ts ./
 COPY assets/ assets/
 RUN npm run build
 
-# Stage 2: Generate code coverage report
-FROM php:8.4-cli AS coverage-builder
+# Generate JS test coverage report
+RUN npx jest --coverage --coverageDirectory=public/coverage 2>&1 || true
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev \
-    libicu-dev \
-    libsqlite3-dev \
-    unzip \
-    && docker-php-ext-install pdo_pgsql pdo_sqlite intl \
-    && pecl install pcov && docker-php-ext-enable pcov \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-WORKDIR /app
-
-COPY composer.json composer.lock ./
-RUN composer install --optimize-autoloader --no-scripts --no-interaction
-
-COPY . .
-
-# Set up test environment properly
-RUN mkdir -p var public/coverage && \
-    cp .env.test .env.local && \
-    php bin/console cache:warmup --env=test && \
-    php bin/phpunit --testsuite unit --coverage-html public/coverage || \
-    echo '<html><body><h1>Coverage report generation failed during build</h1></body></html>' > public/coverage/index.html
-
-# Stage 3: PHP production image
+# Stage 2: PHP production image
 FROM php:8.4-apache AS production
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -86,8 +61,8 @@ RUN echo "APP_ENV=prod" > .env
 # Copy built frontend assets from node stage
 COPY --from=node-builder /app/public/build/ public/build/
 
-# Copy code coverage report from coverage stage
-COPY --from=coverage-builder /app/public/coverage/ public/coverage/
+# Copy coverage report from node stage
+COPY --from=node-builder /app/public/coverage/ public/coverage/
 
 # Skip post-install-cmd during build — cache warmup runs in start.sh
 # where Railway's runtime env vars are available

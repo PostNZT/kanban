@@ -9,7 +9,6 @@ export default function Footer() {
                 <nav className="footer-links">
                     <Link to="/about">About</Link>
                     <a href="/api/doc" target="_blank" rel="noopener noreferrer">API Docs</a>
-                    <a href="/coverage/index.html" target="_blank" rel="noopener noreferrer">Code Coverage</a>
                 </nav>
             </div>
         </footer>

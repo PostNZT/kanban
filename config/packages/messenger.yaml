@@ -21,3 +21,9 @@ framework:
             'App\Message\UpdateCardMessage': async
             'App\Message\DeleteCardMessage': async
             'App\Message\MoveCardMessage': async
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                async: 'in-memory://'

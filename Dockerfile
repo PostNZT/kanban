@@ -1,4 +1,4 @@
-# Stage 1: Build frontend assets and generate coverage
+# Stage 1: Build frontend assets
 FROM node:22-alpine AS node-builder
 
 WORKDIR /app
@@ -6,12 +6,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY webpack.config.js tsconfig.json jest.config.ts ./
+COPY webpack.config.js tsconfig.json ./
 COPY assets/ assets/
 RUN npm run build
-
-# Generate JS test coverage report
-RUN npx jest --coverage --coverageDirectory=public/coverage 2>&1 || true
 
 # Stage 2: PHP production image
 FROM php:8.4-apache AS production
@@ -60,9 +57,6 @@ RUN echo "APP_ENV=prod" > .env
 
 # Copy built frontend assets from node stage
 COPY --from=node-builder /app/public/build/ public/build/
-
-# Copy coverage report from node stage
-COPY --from=node-builder /app/public/coverage/ public/coverage/
 
 # Skip post-install-cmd during build — cache warmup runs in start.sh
 # where Railway's runtime env vars are available

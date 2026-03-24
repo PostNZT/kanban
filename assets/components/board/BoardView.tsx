@@ -21,25 +21,11 @@ export default function BoardView() {
     useEffect(() => {
         if (!id) return;
 
-        // Use optimistic board from route state if available (instant render after create)
+        // Use board from route state if available (instant render after create)
         const passedBoard = (location.state as { board?: Board } | null)?.board;
         if (passedBoard && passedBoard.id === id) {
             dispatch({ type: 'SET_BOARD', payload: passedBoard });
             setLoading(false);
-
-            // Fetch real data in background to get actual column IDs
-            boardsApi.getBoard(id).then((board) => {
-                dispatch({ type: 'SET_BOARD', payload: board });
-            }).catch(() => {
-                // Board might not be persisted yet — retry after a short delay
-                setTimeout(() => {
-                    boardsApi.getBoard(id).then((board) => {
-                        dispatch({ type: 'SET_BOARD', payload: board });
-                    }).catch(() => {
-                        // Still not available — user will see optimistic data
-                    });
-                }, 2000);
-            });
             return;
         }
 

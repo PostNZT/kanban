@@ -2,11 +2,13 @@
 
 namespace App\Controller;
 
-use App\Message\CreateBoardMessage;
+use App\Entity\Board;
+use App\Entity\BoardColumn;
 use App\Message\DeleteBoardMessage;
 use App\Message\UpdateBoardMessage;
 use App\Service\BoardSerializer;
 use App\Service\BoardService;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,6 +24,7 @@ class BoardController extends AbstractController
         private readonly BoardService $boardService,
         private readonly BoardSerializer $boardSerializer,
         private readonly MessageBusInterface $messageBus,
+        private readonly EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -61,25 +64,24 @@ class BoardController extends AbstractController
         // Accept client-provided UUID or generate one
         $boardUuid = isset($data['uuid']) && is_string($data['uuid']) ? $data['uuid'] : Uuid::v4()->toRfc4122();
 
-        // Dispatch async — DB write happens in background
-        $this->messageBus->dispatch(new CreateBoardMessage(
-            boardUuid: $boardUuid,
-            ownerId: $user->getId(),
-            title: $title,
-        ));
+        // Synchronous create — board must exist before frontend navigates to it
+        $board = new Board();
+        $board->setUuid($boardUuid);
+        $board->setTitle($title);
+        $board->setOwner($user);
 
-        // Return optimistic response immediately (no DB hit)
-        $now = new \DateTimeImmutable();
-        return $this->json([
-            'id' => $boardUuid,
-            'title' => $title,
-            'columns' => [
-                ['id' => -1, 'title' => 'To Do', 'position' => 0, 'cards' => []],
-                ['id' => -2, 'title' => 'In Progress', 'position' => 1, 'cards' => []],
-                ['id' => -3, 'title' => 'Done', 'position' => 2, 'cards' => []],
-            ],
-            'createdAt' => $now->format('c'),
-        ], Response::HTTP_ACCEPTED);
+        $defaultColumns = ['To Do', 'In Progress', 'Done'];
+        foreach ($defaultColumns as $position => $columnTitle) {
+            $column = new BoardColumn();
+            $column->setTitle($columnTitle);
+            $column->setPosition($position);
+            $board->addColumn($column);
+        }
+
+        $this->entityManager->persist($board);
+        $this->entityManager->flush();
+
+        return $this->json($this->boardSerializer->serializeBoard($board), Response::HTTP_CREATED);
     }
 
     #[Route('/{uuid}', name: 'board_show', methods: ['GET'], requirements: ['uuid' => '[0-9a-f-]{36}'])]

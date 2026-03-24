@@ -75,13 +75,14 @@ describe('BoardList', () => {
 
     test('creates a board and navigates to it', async () => {
         const user = userEvent.setup();
-        (boardsApi.getBoards as jest.Mock).mockResolvedValue([]);
-        (boardsApi.createBoard as jest.Mock).mockResolvedValue({
+        const createdBoard = {
             id: 'new-uuid',
             title: 'New Board',
             columns: [],
             createdAt: '2026-01-01',
-        });
+        };
+        (boardsApi.getBoards as jest.Mock).mockResolvedValue([]);
+        (boardsApi.createBoard as jest.Mock).mockResolvedValue(createdBoard);
 
         renderBoardList();
 
@@ -93,8 +94,11 @@ describe('BoardList', () => {
         await user.click(screen.getByRole('button', { name: /create board/i }));
 
         await waitFor(() => {
-            expect(boardsApi.createBoard).toHaveBeenCalledWith('New Board');
-            expect(mockNavigate).toHaveBeenCalledWith('/boards/new-uuid');
+            expect(boardsApi.createBoard).toHaveBeenCalledWith('New Board', expect.any(String));
+            expect(mockNavigate).toHaveBeenCalledWith(
+                expect.stringMatching(/^\/boards\//),
+                { state: { board: createdBoard } },
+            );
         });
     });
 

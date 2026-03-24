@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Board, BoardSummary } from '../../types';
+import { BoardSummary } from '../../types';
 import { useToast } from '../../context/ToastContext';
 import * as boardsApi from '../../api/boards';
 
@@ -18,34 +18,24 @@ export default function BoardList() {
         });
     }, []);
 
+    const [creating, setCreating] = useState<boolean>(false);
+
     const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!newTitle.trim()) return;
+        if (!newTitle.trim() || creating) return;
 
         const title = newTitle.trim();
         const uuid = crypto.randomUUID();
-        const now = new Date().toISOString();
 
-        // Build optimistic board to pass via route state
-        const optimisticBoard: Board = {
-            id: uuid,
-            title,
-            columns: [
-                { id: -1, title: 'To Do', position: 0, cards: [] },
-                { id: -2, title: 'In Progress', position: 1, cards: [] },
-                { id: -3, title: 'Done', position: 2, cards: [] },
-            ],
-            createdAt: now,
-        };
-
-        // Navigate immediately — no waiting for API
-        setNewTitle('');
-        showToast('Board created!', 'success');
-        navigate(`/boards/${uuid}`, { state: { board: optimisticBoard } });
-
-        // Fire-and-forget: persist in background
-        boardsApi.createBoard(title, uuid).catch(() => {
-            showToast('Board may not have saved. Try refreshing.', 'error');
+        setCreating(true);
+        boardsApi.createBoard(title, uuid).then((board) => {
+            setNewTitle('');
+            showToast('Board created!', 'success');
+            navigate(`/boards/${uuid}`, { state: { board } });
+        }).catch(() => {
+            showToast('Failed to create board.', 'error');
+        }).finally(() => {
+            setCreating(false);
         });
     };
 
@@ -72,8 +62,8 @@ export default function BoardList() {
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                 />
-                <button type="submit" className="btn btn-primary">
-                    Create Board
+                <button type="submit" className="btn btn-primary" disabled={creating}>
+                    {creating ? 'Creating...' : 'Create Board'}
                 </button>
             </form>
             <div className="boards-grid">

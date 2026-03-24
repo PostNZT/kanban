@@ -109,6 +109,13 @@ body {
     box-shadow: 0 0 0 2px rgba(67,97,238,0.2);
 }
 
+.form-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: #888;
+}
+
 .auth-form .btn { width: 100%; margin-top: 8px; }
 
 .auth-link {

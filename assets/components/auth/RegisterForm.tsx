@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
+import axios from 'axios';
 
 export default function RegisterForm() {
     const [email, setEmail] = useState<string>('');
@@ -26,8 +27,19 @@ export default function RegisterForm() {
             await register(email, password);
             showToast('Account created! Please log in.', 'success');
             navigate('/login');
-        } catch {
-            showToast('Registration failed. Email may already be in use.', 'error');
+        } catch (err) {
+            if (axios.isAxiosError(err) && err.response) {
+                const data = err.response.data;
+                if (data.errors && Array.isArray(data.errors)) {
+                    showToast(data.errors.join(' '), 'error');
+                } else if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    showToast('Registration failed.', 'error');
+                }
+            } else {
+                showToast('Registration failed. Please try again.', 'error');
+            }
         } finally {
             setLoading(false);
         }
@@ -55,8 +67,9 @@ export default function RegisterForm() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        minLength={6}
+                        minLength={8}
                     />
+                    <small className="form-hint">Min 8 characters, with uppercase, lowercase, and a number</small>
                 </div>
                 <div className="form-group">
                     <label htmlFor="confirmPassword">Confirm Password</label>

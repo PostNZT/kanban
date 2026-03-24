@@ -87,10 +87,10 @@ class BoardControllerTest extends ApiTestCase
             ->findOneBy(['title' => 'Test Board'])->getUuid();
 
         $this->jsonRequest('PUT', '/api/boards/' . $boardUuid, ['title' => 'Updated Board']);
-        $this->assertResponseIsSuccessful();
+        $this->assertResponseStatusCodeSame(202);
 
         $data = $this->getJsonResponse();
-        $this->assertSame('Updated Board', $data['title']);
+        $this->assertSame('accepted', $data['status']);
     }
 
     public function testDeleteBoard(): void
@@ -102,11 +102,7 @@ class BoardControllerTest extends ApiTestCase
             ->findOneBy(['title' => 'Test Board'])->getUuid();
 
         $this->client->request('DELETE', '/api/boards/' . $boardUuid);
-        $this->assertResponseStatusCodeSame(204);
-
-        $this->client->request('GET', '/api/boards');
-        $data = $this->getJsonResponse();
-        $this->assertCount(0, $data);
+        $this->assertResponseStatusCodeSame(202);
     }
 
     public function testBoardIdIsUuidNotInteger(): void

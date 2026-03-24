@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
-import { Board } from '../../types';
 import { useBoard } from '../../context/BoardContext';
 import { useToast } from '../../context/ToastContext';
 import { snapshotBoard } from '../../reducers/boardReducer';
@@ -12,7 +11,6 @@ import AddColumnForm from './AddColumnForm';
 
 export default function BoardView() {
     const { id } = useParams<{ id: string }>();
-    const location = useLocation();
     const { state, dispatch } = useBoard();
     const [loading, setLoading] = useState<boolean>(true);
     const navigate = useNavigate();
@@ -20,14 +18,6 @@ export default function BoardView() {
 
     useEffect(() => {
         if (!id) return;
-
-        // Use board from route state if available (instant render after create)
-        const passedBoard = (location.state as { board?: Board } | null)?.board;
-        if (passedBoard && passedBoard.id === id) {
-            dispatch({ type: 'SET_BOARD', payload: passedBoard });
-            setLoading(false);
-            return;
-        }
 
         boardsApi.getBoard(id).then((board) => {
             dispatch({ type: 'SET_BOARD', payload: board });

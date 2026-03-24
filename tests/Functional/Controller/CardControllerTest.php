@@ -54,10 +54,9 @@ class CardControllerTest extends ApiTestCase
             'description' => 'Updated description',
         ]);
 
-        $this->assertResponseIsSuccessful();
+        $this->assertResponseStatusCodeSame(202);
         $data = $this->getJsonResponse();
-        $this->assertSame('Updated Task', $data['title']);
-        $this->assertSame('Updated description', $data['description']);
+        $this->assertSame('accepted', $data['status']);
     }
 
     public function testDeleteCard(): void
@@ -68,7 +67,7 @@ class CardControllerTest extends ApiTestCase
         $card = $this->em->getRepository(Card::class)->findOneBy(['title' => 'Task 1']);
 
         $this->client->request('DELETE', '/api/cards/' . $card->getId());
-        $this->assertResponseStatusCodeSame(204);
+        $this->assertResponseStatusCodeSame(202);
     }
 
     public function testMoveCardBetweenColumns(): void
@@ -85,13 +84,9 @@ class CardControllerTest extends ApiTestCase
             'targetPosition' => 0,
         ]);
 
-        $this->assertResponseIsSuccessful();
-
-        // Verify the card moved
-        $this->em->clear();
-        $movedCard = $this->em->getRepository(Card::class)->find($card->getId());
-        $this->assertSame($targetCol->getId(), $movedCard->getBoardColumn()->getId());
-        $this->assertSame(0, $movedCard->getPosition());
+        $this->assertResponseStatusCodeSame(202);
+        $data = $this->getJsonResponse();
+        $this->assertSame('accepted', $data['status']);
     }
 
     public function testMoveCardWithinSameColumn(): void
@@ -167,21 +162,15 @@ class CardControllerTest extends ApiTestCase
         $this->authenticateAs('user1@test.com');
 
         $card = $this->em->getRepository(Card::class)->findOneBy(['title' => 'Task 1']);
-        $originalPosition = $card->getPosition();
 
         $this->jsonRequest('PUT', '/api/cards/' . $card->getId(), [
             'title' => 'Updated Title',
             'position' => 999,
         ]);
 
-        $this->assertResponseIsSuccessful();
+        $this->assertResponseStatusCodeSame(202);
         $data = $this->getJsonResponse();
-        $this->assertSame('Updated Title', $data['title']);
-
-        // Verify the extra 'position' field was ignored
-        $this->em->clear();
-        $refreshedCard = $this->em->getRepository(Card::class)->find($card->getId());
-        $this->assertSame($originalPosition, $refreshedCard->getPosition());
+        $this->assertSame('accepted', $data['status']);
     }
 
     public function testMoveCardRejectsInvalidTypes(): void

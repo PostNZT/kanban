@@ -107,7 +107,7 @@ describe('RegisterForm', () => {
         await user.click(screen.getByRole('button', { name: /register/i }));
 
         await waitFor(() => {
-            expect(mockShowToast).toHaveBeenCalledWith('Registration failed. Email may already be in use.', 'error');
+            expect(mockShowToast).toHaveBeenCalledWith('Registration failed. Please try again.', 'error');
         });
     });
 

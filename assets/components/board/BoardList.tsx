@@ -30,8 +30,8 @@ export default function BoardList() {
         setCreating(true);
         boardsApi.createBoard(title, uuid).then((board) => {
             setNewTitle('');
+            setBoards((prev) => [{ id: board.id, title: board.title, createdAt: board.createdAt }, ...prev]);
             showToast('Board created!', 'success');
-            navigate(`/boards/${uuid}`, { state: { board } });
         }).catch(() => {
             showToast('Failed to create board.', 'error');
         }).finally(() => {

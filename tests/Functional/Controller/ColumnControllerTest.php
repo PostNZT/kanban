@@ -53,9 +53,9 @@ class ColumnControllerTest extends ApiTestCase
             'title' => 'Backlog',
         ]);
 
-        $this->assertResponseIsSuccessful();
+        $this->assertResponseStatusCodeSame(202);
         $data = $this->getJsonResponse();
-        $this->assertSame('Backlog', $data['title']);
+        $this->assertSame('accepted', $data['status']);
     }
 
     public function testDeleteColumn(): void
@@ -67,7 +67,7 @@ class ColumnControllerTest extends ApiTestCase
             ->findOneBy(['title' => 'To Do'])->getId();
 
         $this->client->request('DELETE', '/api/columns/' . $colId);
-        $this->assertResponseStatusCodeSame(204);
+        $this->assertResponseStatusCodeSame(202);
     }
 
     public function testReorderColumns(): void

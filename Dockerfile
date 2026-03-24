@@ -16,8 +16,9 @@ FROM php:8.4-cli AS coverage-builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     libicu-dev \
+    libsqlite3-dev \
     unzip \
-    && docker-php-ext-install pdo_pgsql intl \
+    && docker-php-ext-install pdo_pgsql pdo_sqlite intl \
     && pecl install pcov && docker-php-ext-enable pcov \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 

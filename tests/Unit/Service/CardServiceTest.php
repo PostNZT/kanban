@@ -8,7 +8,6 @@ use App\Entity\Card;
 use App\Entity\User;
 use App\Repository\BoardColumnRepository;
 use App\Repository\CardRepository;
-use App\Service\CardReorderService;
 use App\Service\CardService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -75,7 +74,6 @@ class CardServiceTest extends TestCase
             $entityManager,
             $this->createStub(CardRepository::class),
             $columnRepo,
-            $this->createStub(CardReorderService::class),
         );
 
         $card = $service->createCard(10, 'New Card', 'Description', $user);
@@ -94,7 +92,6 @@ class CardServiceTest extends TestCase
             $this->createStub(EntityManagerInterface::class),
             $this->createStub(CardRepository::class),
             $columnRepo,
-            $this->createStub(CardReorderService::class),
         );
 
         $this->expectException(NotFoundHttpException::class);
@@ -115,38 +112,13 @@ class CardServiceTest extends TestCase
             $this->createStub(EntityManagerInterface::class),
             $this->createStub(CardRepository::class),
             $columnRepo,
-            $this->createStub(CardReorderService::class),
         );
 
         $this->expectException(AccessDeniedHttpException::class);
         $service->createCard(10, 'Card', null, $other);
     }
 
-    public function testUpdateCardTitle(): void
-    {
-        $user = $this->makeUser();
-        $board = $this->makeBoard($user);
-        $column = $this->makeColumn($board);
-        $card = $this->makeCard($column, 1);
-
-        $cardRepo = $this->createStub(CardRepository::class);
-        $cardRepo->method('findWithColumnBoardAndOwner')->willReturn($card);
-
-        $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->expects($this->once())->method('flush');
-
-        $service = new CardService(
-            $entityManager,
-            $cardRepo,
-            $this->createStub(BoardColumnRepository::class),
-            $this->createStub(CardReorderService::class),
-        );
-
-        $result = $service->updateCard(1, ['title' => 'Updated'], $user);
-        $this->assertSame('Updated', $result->getTitle());
-    }
-
-    public function testUpdateCardDescription(): void
+    public function testVerifyCardOwnershipSuccess(): void
     {
         $user = $this->makeUser();
         $board = $this->makeBoard($user);
@@ -160,14 +132,14 @@ class CardServiceTest extends TestCase
             $this->createStub(EntityManagerInterface::class),
             $cardRepo,
             $this->createStub(BoardColumnRepository::class),
-            $this->createStub(CardReorderService::class),
         );
 
-        $result = $service->updateCard(1, ['description' => 'New desc'], $user);
-        $this->assertSame('New desc', $result->getDescription());
+        // Should not throw
+        $service->verifyCardOwnership(1, $user);
+        $this->assertTrue(true);
     }
 
-    public function testUpdateCardNotFound(): void
+    public function testVerifyCardOwnershipNotFound(): void
     {
         $cardRepo = $this->createStub(CardRepository::class);
         $cardRepo->method('findWithColumnBoardAndOwner')->willReturn(null);
@@ -176,14 +148,13 @@ class CardServiceTest extends TestCase
             $this->createStub(EntityManagerInterface::class),
             $cardRepo,
             $this->createStub(BoardColumnRepository::class),
-            $this->createStub(CardReorderService::class),
         );
 
         $this->expectException(NotFoundHttpException::class);
-        $service->updateCard(999, ['title' => 'X'], $this->makeUser());
+        $service->verifyCardOwnership(999, $this->makeUser());
     }
 
-    public function testUpdateCardAccessDenied(): void
+    public function testVerifyCardOwnershipAccessDenied(): void
     {
         $owner = $this->makeUser(1);
         $other = $this->makeUser(2);
@@ -198,35 +169,9 @@ class CardServiceTest extends TestCase
             $this->createStub(EntityManagerInterface::class),
             $cardRepo,
             $this->createStub(BoardColumnRepository::class),
-            $this->createStub(CardReorderService::class),
         );
 
         $this->expectException(AccessDeniedHttpException::class);
-        $service->updateCard(1, ['title' => 'X'], $other);
-    }
-
-    public function testDeleteCardDelegatesToReorderService(): void
-    {
-        $user = $this->makeUser();
-        $board = $this->makeBoard($user);
-        $column = $this->makeColumn($board);
-        $card = $this->makeCard($column, 1);
-
-        $cardRepo = $this->createStub(CardRepository::class);
-        $cardRepo->method('findWithColumnBoardAndOwner')->willReturn($card);
-
-        $reorderService = $this->createMock(CardReorderService::class);
-        $reorderService->expects($this->once())
-            ->method('removeCardAndReindex')
-            ->with($card);
-
-        $service = new CardService(
-            $this->createStub(EntityManagerInterface::class),
-            $cardRepo,
-            $this->createStub(BoardColumnRepository::class),
-            $reorderService,
-        );
-
-        $service->deleteCard(1, $user);
+        $service->verifyCardOwnership(1, $other);
     }
 }

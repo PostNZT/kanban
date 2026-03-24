@@ -2,13 +2,18 @@
 
 namespace App\Controller;
 
+use App\Message\CreateBoardMessage;
+use App\Message\DeleteBoardMessage;
+use App\Message\UpdateBoardMessage;
 use App\Service\BoardSerializer;
 use App\Service\BoardService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Uid\Uuid;
 
 #[Route('/api/boards')]
 class BoardController extends AbstractController
@@ -16,6 +21,7 @@ class BoardController extends AbstractController
     public function __construct(
         private readonly BoardService $boardService,
         private readonly BoardSerializer $boardSerializer,
+        private readonly MessageBusInterface $messageBus,
     ) {
     }
 
@@ -52,9 +58,28 @@ class BoardController extends AbstractController
             return $this->json(['error' => 'Title must not exceed 255 characters.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $board = $this->boardService->createBoard($user, $title);
+        // Accept client-provided UUID or generate one
+        $boardUuid = isset($data['uuid']) && is_string($data['uuid']) ? $data['uuid'] : Uuid::v4()->toRfc4122();
 
-        return $this->json($this->boardSerializer->serializeBoard($board), Response::HTTP_CREATED);
+        // Dispatch async — DB write happens in background
+        $this->messageBus->dispatch(new CreateBoardMessage(
+            boardUuid: $boardUuid,
+            ownerId: $user->getId(),
+            title: $title,
+        ));
+
+        // Return optimistic response immediately (no DB hit)
+        $now = new \DateTimeImmutable();
+        return $this->json([
+            'id' => $boardUuid,
+            'title' => $title,
+            'columns' => [
+                ['id' => -1, 'title' => 'To Do', 'position' => 0, 'cards' => []],
+                ['id' => -2, 'title' => 'In Progress', 'position' => 1, 'cards' => []],
+                ['id' => -3, 'title' => 'Done', 'position' => 2, 'cards' => []],
+            ],
+            'createdAt' => $now->format('c'),
+        ], Response::HTTP_ACCEPTED);
     }
 
     #[Route('/{uuid}', name: 'board_show', methods: ['GET'], requirements: ['uuid' => '[0-9a-f-]{36}'])]
@@ -85,17 +110,29 @@ class BoardController extends AbstractController
             return $this->json(['error' => 'Title must not exceed 255 characters.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $board = $this->boardService->updateBoard($uuid, $user, $title);
+        // Verify ownership before dispatching
+        $this->boardService->getBoard($uuid, $user);
 
-        return $this->json($this->boardSerializer->serializeBoard($board));
+        // Dispatch async update
+        $this->messageBus->dispatch(new UpdateBoardMessage(
+            boardUuid: $uuid,
+            title: $title,
+        ));
+
+        return $this->json(['status' => 'accepted'], Response::HTTP_ACCEPTED);
     }
 
     #[Route('/{uuid}', name: 'board_delete', methods: ['DELETE'], requirements: ['uuid' => '[0-9a-f-]{36}'])]
     public function delete(string $uuid): JsonResponse
     {
         $user = $this->getUser();
-        $this->boardService->deleteBoard($uuid, $user);
 
-        return $this->json(null, Response::HTTP_NO_CONTENT);
+        // Verify ownership before dispatching
+        $this->boardService->getBoard($uuid, $user);
+
+        // Dispatch async delete
+        $this->messageBus->dispatch(new DeleteBoardMessage(boardUuid: $uuid));
+
+        return $this->json(null, Response::HTTP_ACCEPTED);
     }
 }

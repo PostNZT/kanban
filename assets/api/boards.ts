@@ -11,14 +11,13 @@ export async function getBoard(uuid: string): Promise<Board> {
     return response.data;
 }
 
-export async function createBoard(title: string): Promise<Board> {
-    const response = await apiClient.post<Board>('/boards', { title });
+export async function createBoard(title: string, uuid: string): Promise<Board> {
+    const response = await apiClient.post<Board>('/boards', { title, uuid });
     return response.data;
 }
 
-export async function updateBoard(uuid: string, title: string): Promise<Board> {
-    const response = await apiClient.put<Board>(`/boards/${uuid}`, { title });
-    return response.data;
+export async function updateBoard(uuid: string, title: string): Promise<void> {
+    await apiClient.put(`/boards/${uuid}`, { title });
 }
 
 export async function deleteBoard(uuid: string): Promise<void> {

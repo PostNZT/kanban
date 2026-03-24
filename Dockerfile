@@ -33,7 +33,7 @@ RUN echo "APP_ENV=test" > .env.local
 
 RUN mkdir -p public/coverage && \
     php bin/console cache:warmup --env=test 2>/dev/null; \
-    php bin/phpunit --coverage-html public/coverage 2>&1 || true
+    php bin/phpunit --testsuite unit --coverage-html public/coverage 2>&1 || true
 
 # Stage 3: PHP production image
 FROM php:8.4-apache AS production

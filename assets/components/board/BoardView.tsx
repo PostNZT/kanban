@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
+import { Board } from '../../types';
 import { useBoard } from '../../context/BoardContext';
 import { useToast } from '../../context/ToastContext';
 import { snapshotBoard } from '../../reducers/boardReducer';
@@ -11,6 +12,7 @@ import AddColumnForm from './AddColumnForm';
 
 export default function BoardView() {
     const { id } = useParams<{ id: string }>();
+    const location = useLocation();
     const { state, dispatch } = useBoard();
     const [loading, setLoading] = useState<boolean>(true);
     const navigate = useNavigate();
@@ -18,6 +20,29 @@ export default function BoardView() {
 
     useEffect(() => {
         if (!id) return;
+
+        // Use optimistic board from route state if available (instant render after create)
+        const passedBoard = (location.state as { board?: Board } | null)?.board;
+        if (passedBoard && passedBoard.id === id) {
+            dispatch({ type: 'SET_BOARD', payload: passedBoard });
+            setLoading(false);
+
+            // Fetch real data in background to get actual column IDs
+            boardsApi.getBoard(id).then((board) => {
+                dispatch({ type: 'SET_BOARD', payload: board });
+            }).catch(() => {
+                // Board might not be persisted yet — retry after a short delay
+                setTimeout(() => {
+                    boardsApi.getBoard(id).then((board) => {
+                        dispatch({ type: 'SET_BOARD', payload: board });
+                    }).catch(() => {
+                        // Still not available — user will see optimistic data
+                    });
+                }, 2000);
+            });
+            return;
+        }
+
         boardsApi.getBoard(id).then((board) => {
             dispatch({ type: 'SET_BOARD', payload: board });
             setLoading(false);

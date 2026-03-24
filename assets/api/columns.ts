@@ -6,9 +6,8 @@ export async function createColumn(boardUuid: string, title: string): Promise<Bo
     return response.data;
 }
 
-export async function updateColumn(id: number, title: string): Promise<BoardColumn> {
-    const response = await apiClient.put<BoardColumn>(`/columns/${id}`, { title });
-    return response.data;
+export async function updateColumn(id: number, title: string): Promise<void> {
+    await apiClient.put(`/columns/${id}`, { title });
 }
 
 export async function deleteColumn(id: number): Promise<void> {

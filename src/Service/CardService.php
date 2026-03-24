@@ -16,7 +16,6 @@ class CardService
         private readonly EntityManagerInterface $entityManager,
         private readonly CardRepository $cardRepository,
         private readonly BoardColumnRepository $columnRepository,
-        private readonly CardReorderService $reorderService,
     ) {
     }
 
@@ -44,29 +43,7 @@ class CardService
         return $card;
     }
 
-    public function updateCard(int $id, array $data, User $user): Card
-    {
-        $card = $this->getCard($id, $user);
-
-        if (isset($data['title'])) {
-            $card->setTitle($data['title']);
-        }
-        if (array_key_exists('description', $data)) {
-            $card->setDescription($data['description']);
-        }
-
-        $this->entityManager->flush();
-
-        return $card;
-    }
-
-    public function deleteCard(int $id, User $user): void
-    {
-        $card = $this->getCard($id, $user);
-        $this->reorderService->removeCardAndReindex($card);
-    }
-
-    private function getCard(int $id, User $user): Card
+    public function verifyCardOwnership(int $id, User $user): void
     {
         $card = $this->cardRepository->findWithColumnBoardAndOwner($id);
         if (!$card) {
@@ -76,7 +53,5 @@ class CardService
         if (!$card->getBoardColumn()->getBoard()->isOwnedBy($user)) {
             throw new AccessDeniedHttpException('Access denied.');
         }
-
-        return $card;
     }
 }

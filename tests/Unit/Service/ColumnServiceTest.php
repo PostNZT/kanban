@@ -7,9 +7,7 @@ use App\Entity\BoardColumn;
 use App\Entity\User;
 use App\Repository\BoardColumnRepository;
 use App\Repository\BoardRepository;
-use App\Security\BoardVoter;
 use App\Service\BoardService;
-use App\Service\CardReorderService;
 use App\Service\ColumnService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -67,7 +65,6 @@ class ColumnServiceTest extends TestCase
             $boardService,
             $boardRepo,
             $this->createStub(BoardColumnRepository::class),
-            $this->createStub(CardReorderService::class),
         );
 
         $column = $service->createColumn('board-uuid', 'Review', $user);
@@ -77,7 +74,7 @@ class ColumnServiceTest extends TestCase
         $this->assertSame($board, $column->getBoard());
     }
 
-    public function testUpdateColumnSuccess(): void
+    public function testVerifyColumnOwnershipSuccess(): void
     {
         $user = $this->makeUser();
         $board = $this->makeBoard($user);
@@ -86,22 +83,19 @@ class ColumnServiceTest extends TestCase
         $columnRepo = $this->createStub(BoardColumnRepository::class);
         $columnRepo->method('findWithBoardAndOwner')->willReturn($column);
 
-        $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->expects($this->once())->method('flush');
-
         $service = new ColumnService(
-            $entityManager,
+            $this->createStub(EntityManagerInterface::class),
             $this->createStub(BoardService::class),
             $this->createStub(BoardRepository::class),
             $columnRepo,
-            $this->createStub(CardReorderService::class),
         );
 
-        $result = $service->updateColumn(10, 'Renamed', $user);
-        $this->assertSame('Renamed', $result->getTitle());
+        // Should not throw
+        $service->verifyColumnOwnership(10, $user);
+        $this->assertTrue(true);
     }
 
-    public function testUpdateColumnNotFound(): void
+    public function testVerifyColumnOwnershipNotFound(): void
     {
         $columnRepo = $this->createStub(BoardColumnRepository::class);
         $columnRepo->method('findWithBoardAndOwner')->willReturn(null);
@@ -111,14 +105,13 @@ class ColumnServiceTest extends TestCase
             $this->createStub(BoardService::class),
             $this->createStub(BoardRepository::class),
             $columnRepo,
-            $this->createStub(CardReorderService::class),
         );
 
         $this->expectException(NotFoundHttpException::class);
-        $service->updateColumn(999, 'Title', $this->makeUser());
+        $service->verifyColumnOwnership(999, $this->makeUser());
     }
 
-    public function testUpdateColumnAccessDenied(): void
+    public function testVerifyColumnOwnershipAccessDenied(): void
     {
         $owner = $this->makeUser(1);
         $other = $this->makeUser(2);
@@ -133,52 +126,9 @@ class ColumnServiceTest extends TestCase
             $this->createStub(BoardService::class),
             $this->createStub(BoardRepository::class),
             $columnRepo,
-            $this->createStub(CardReorderService::class),
         );
 
         $this->expectException(AccessDeniedHttpException::class);
-        $service->updateColumn(10, 'Title', $other);
-    }
-
-    public function testDeleteColumnDelegatesToReorderService(): void
-    {
-        $user = $this->makeUser();
-        $board = $this->makeBoard($user);
-        $column = $this->makeColumn($board, 10);
-
-        $columnRepo = $this->createStub(BoardColumnRepository::class);
-        $columnRepo->method('findWithBoardAndOwner')->willReturn($column);
-
-        $reorderService = $this->createMock(CardReorderService::class);
-        $reorderService->expects($this->once())
-            ->method('removeColumnAndReindex')
-            ->with($column);
-
-        $service = new ColumnService(
-            $this->createStub(EntityManagerInterface::class),
-            $this->createStub(BoardService::class),
-            $this->createStub(BoardRepository::class),
-            $columnRepo,
-            $reorderService,
-        );
-
-        $service->deleteColumn(10, $user);
-    }
-
-    public function testDeleteColumnNotFound(): void
-    {
-        $columnRepo = $this->createStub(BoardColumnRepository::class);
-        $columnRepo->method('findWithBoardAndOwner')->willReturn(null);
-
-        $service = new ColumnService(
-            $this->createStub(EntityManagerInterface::class),
-            $this->createStub(BoardService::class),
-            $this->createStub(BoardRepository::class),
-            $columnRepo,
-            $this->createStub(CardReorderService::class),
-        );
-
-        $this->expectException(NotFoundHttpException::class);
-        $service->deleteColumn(999, $this->makeUser());
+        $service->verifyColumnOwnership(10, $other);
     }
 }

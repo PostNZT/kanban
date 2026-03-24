@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Kanban Board API",
-    "description": "REST API for managing Kanban boards with columns and cards",
-    "version": "1.0.0"
+    "description": "REST API for managing Kanban boards with columns and cards. Write operations use async processing (hot/cold storage) — mutations return 202 Accepted and are persisted in the background.",
+    "version": "2.0.0"
   },
   "servers": [
     { "url": "/api", "description": "Local API" }
@@ -51,6 +51,12 @@
           "description": { "type": "string", "nullable": true },
           "position": { "type": "integer" },
           "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Accepted": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "accepted" }
         }
       },
       "Error": {
@@ -133,7 +139,8 @@
       },
       "post": {
         "tags": ["Boards"],
-        "summary": "Create a new board with default columns",
+        "summary": "Create a new board with default columns (async)",
+        "description": "Returns an optimistic response immediately. The board and its default columns (To Do, In Progress, Done) are persisted asynchronously in the background.",
         "requestBody": {
           "required": true,
           "content": {
@@ -142,22 +149,30 @@
                 "type": "object",
                 "required": ["title"],
                 "properties": {
-                  "title": { "type": "string", "example": "My Board" }
+                  "title": { "type": "string", "example": "My Board" },
+                  "uuid": { "type": "string", "format": "uuid", "description": "Optional client-generated UUID. If omitted, the server generates one." }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": {
-            "description": "Board created",
+          "202": {
+            "description": "Board accepted for creation — optimistic response with temporary column IDs",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Board" }
               }
             }
           },
-          "400": { "description": "Title is required" }
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
@@ -182,7 +197,8 @@
       },
       "put": {
         "tags": ["Boards"],
-        "summary": "Update board title",
+        "summary": "Update board title (async)",
+        "description": "Verifies ownership synchronously, then persists the update asynchronously.",
         "parameters": [
           { "name": "uuid", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
         ],
@@ -201,17 +217,35 @@
           }
         },
         "responses": {
-          "200": { "description": "Board updated" }
+          "202": {
+            "description": "Update accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Accepted" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": { "description": "Board not found" }
         }
       },
       "delete": {
         "tags": ["Boards"],
-        "summary": "Delete a board",
+        "summary": "Delete a board (async)",
+        "description": "Verifies ownership synchronously, then deletes asynchronously.",
         "parameters": [
           { "name": "uuid", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
         ],
         "responses": {
-          "204": { "description": "Board deleted" }
+          "202": { "description": "Delete accepted" },
+          "404": { "description": "Board not found" }
         }
       }
     },
@@ -219,6 +253,7 @@
       "post": {
         "tags": ["Columns"],
         "summary": "Add a column to a board",
+        "description": "Column creation is synchronous — returns the real column ID.",
         "parameters": [
           { "name": "boardUuid", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
         ],
@@ -251,7 +286,7 @@
     "/columns/{id}": {
       "put": {
         "tags": ["Columns"],
-        "summary": "Update column title",
+        "summary": "Update column title (async)",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
         ],
@@ -270,24 +305,33 @@
           }
         },
         "responses": {
-          "200": { "description": "Column updated" }
+          "202": {
+            "description": "Update accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Accepted" }
+              }
+            }
+          },
+          "404": { "description": "Column not found" }
         }
       },
       "delete": {
         "tags": ["Columns"],
-        "summary": "Delete a column",
+        "summary": "Delete a column (async)",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
         ],
         "responses": {
-          "204": { "description": "Column deleted" }
+          "202": { "description": "Delete accepted" },
+          "404": { "description": "Column not found" }
         }
       }
     },
     "/columns/reorder": {
       "put": {
         "tags": ["Columns"],
-        "summary": "Reorder columns within a board",
+        "summary": "Reorder columns within a board (async)",
         "requestBody": {
           "required": true,
           "content": {
@@ -304,7 +348,14 @@
           }
         },
         "responses": {
-          "200": { "description": "Columns reordered" }
+          "202": {
+            "description": "Reorder accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Accepted" }
+              }
+            }
+          }
         }
       }
     },
@@ -312,6 +363,7 @@
       "post": {
         "tags": ["Cards"],
         "summary": "Add a card to a column",
+        "description": "Card creation is synchronous — returns the real card ID.",
         "parameters": [
           { "name": "columnId", "in": "path", "required": true, "schema": { "type": "integer" } }
         ],
@@ -345,7 +397,7 @@
     "/cards/{id}": {
       "put": {
         "tags": ["Cards"],
-        "summary": "Update card title or description",
+        "summary": "Update card title or description (async)",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
         ],
@@ -364,24 +416,33 @@
           }
         },
         "responses": {
-          "200": { "description": "Card updated" }
+          "202": {
+            "description": "Update accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Accepted" }
+              }
+            }
+          },
+          "404": { "description": "Card not found" }
         }
       },
       "delete": {
         "tags": ["Cards"],
-        "summary": "Delete a card",
+        "summary": "Delete a card (async)",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
         ],
         "responses": {
-          "204": { "description": "Card deleted" }
+          "202": { "description": "Delete accepted" },
+          "404": { "description": "Card not found" }
         }
       }
     },
     "/cards/move": {
       "put": {
         "tags": ["Cards"],
-        "summary": "Move a card to a different column or position",
+        "summary": "Move a card to a different column or position (async)",
         "requestBody": {
           "required": true,
           "content": {
@@ -399,7 +460,15 @@
           }
         },
         "responses": {
-          "200": { "description": "Card moved" }
+          "202": {
+            "description": "Move accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Accepted" }
+              }
+            }
+          },
+          "404": { "description": "Card not found" }
         }
       }
     }

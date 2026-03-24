@@ -17,7 +17,6 @@ class ColumnService
         private readonly BoardService $boardService,
         private readonly BoardRepository $boardRepository,
         private readonly BoardColumnRepository $columnRepository,
-        private readonly CardReorderService $reorderService,
     ) {
     }
 
@@ -36,23 +35,7 @@ class ColumnService
         return $column;
     }
 
-    public function updateColumn(int $id, string $title, User $user): BoardColumn
-    {
-        $column = $this->getColumn($id, $user);
-        $column->setTitle($title);
-
-        $this->entityManager->flush();
-
-        return $column;
-    }
-
-    public function deleteColumn(int $id, User $user): void
-    {
-        $column = $this->getColumn($id, $user);
-        $this->reorderService->removeColumnAndReindex($column);
-    }
-
-    private function getColumn(int $id, User $user): BoardColumn
+    public function verifyColumnOwnership(int $id, User $user): void
     {
         $column = $this->columnRepository->findWithBoardAndOwner($id);
         if (!$column) {
@@ -62,7 +45,5 @@ class ColumnService
         if (!$column->getBoard()->isOwnedBy($user)) {
             throw new AccessDeniedHttpException('Access denied.');
         }
-
-        return $column;
     }
 }

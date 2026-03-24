@@ -2,24 +2,28 @@
 
 namespace App\Controller;
 
+use App\Message\DeleteCardMessage;
+use App\Message\MoveCardMessage;
+use App\Message\UpdateCardMessage;
 use App\Service\BoardSerializer;
-use App\Service\CardReorderService;
 use App\Service\CardService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 class CardController extends AbstractController
 {
     public function __construct(
         private readonly CardService $cardService,
-        private readonly CardReorderService $reorderService,
         private readonly BoardSerializer $boardSerializer,
+        private readonly MessageBusInterface $messageBus,
     ) {
     }
 
+    // Card create stays synchronous — single INSERT, needs real ID back
     #[Route('/api/columns/{columnId}/cards', name: 'card_create', methods: ['POST'])]
     public function create(int $columnId, Request $request): JsonResponse
     {
@@ -81,17 +85,30 @@ class CardController extends AbstractController
             }
         }
 
-        $card = $this->cardService->updateCard($id, $allowed, $this->getUser());
+        // Verify ownership
+        $this->cardService->verifyCardOwnership($id, $this->getUser());
 
-        return $this->json($this->boardSerializer->serializeCard($card));
+        // Dispatch async update
+        $this->messageBus->dispatch(new UpdateCardMessage(
+            cardId: $id,
+            title: $allowed['title'] ?? null,
+            description: $allowed['description'] ?? null,
+            descriptionProvided: array_key_exists('description', $allowed),
+        ));
+
+        return $this->json(['status' => 'accepted'], Response::HTTP_ACCEPTED);
     }
 
     #[Route('/api/cards/{id}', name: 'card_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
     public function delete(int $id): JsonResponse
     {
-        $this->cardService->deleteCard($id, $this->getUser());
+        // Verify ownership
+        $this->cardService->verifyCardOwnership($id, $this->getUser());
 
-        return $this->json(null, Response::HTTP_NO_CONTENT);
+        // Dispatch async delete
+        $this->messageBus->dispatch(new DeleteCardMessage(cardId: $id));
+
+        return $this->json(null, Response::HTTP_ACCEPTED);
     }
 
     #[Route('/api/cards/move', name: 'card_move', methods: ['PUT'])]
@@ -117,13 +134,16 @@ class CardController extends AbstractController
             return $this->json(['error' => 'targetPosition must be non-negative.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $this->reorderService->moveCard(
-            $data['cardId'],
-            $data['targetColumnId'],
-            $data['targetPosition'],
-            $this->getUser(),
-        );
+        // Verify ownership
+        $this->cardService->verifyCardOwnership($data['cardId'], $this->getUser());
 
-        return $this->json(['status' => 'ok']);
+        // Dispatch async move
+        $this->messageBus->dispatch(new MoveCardMessage(
+            cardId: $data['cardId'],
+            targetColumnId: $data['targetColumnId'],
+            targetPosition: $data['targetPosition'],
+        ));
+
+        return $this->json(['status' => 'accepted'], Response::HTTP_ACCEPTED);
     }
 }

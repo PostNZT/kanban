@@ -1,0 +1,23 @@
+framework:
+    messenger:
+        transports:
+            async:
+                dsn: 'doctrine://default'
+                options:
+                    table_name: messenger_messages
+                    queue_name: default
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+
+        routing:
+            'App\Message\CreateBoardMessage': async
+            'App\Message\UpdateBoardMessage': async
+            'App\Message\DeleteBoardMessage': async
+            'App\Message\UpdateColumnMessage': async
+            'App\Message\DeleteColumnMessage': async
+            'App\Message\ReorderColumnsMessage': async
+            'App\Message\UpdateCardMessage': async
+            'App\Message\DeleteCardMessage': async
+            'App\Message\MoveCardMessage': async

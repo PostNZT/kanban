@@ -16,9 +16,8 @@ export async function createCard(
 export async function updateCard(
     id: number,
     data: { title?: string; description?: string | null }
-): Promise<Card> {
-    const response = await apiClient.put<Card>(`/cards/${id}`, data);
-    return response.data;
+): Promise<void> {
+    await apiClient.put(`/cards/${id}`, data);
 }
 
 export async function deleteCard(id: number): Promise<void> {

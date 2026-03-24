@@ -2,24 +2,28 @@
 
 namespace App\Controller;
 
+use App\Message\DeleteColumnMessage;
+use App\Message\ReorderColumnsMessage;
+use App\Message\UpdateColumnMessage;
 use App\Service\BoardSerializer;
-use App\Service\CardReorderService;
 use App\Service\ColumnService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 class ColumnController extends AbstractController
 {
     public function __construct(
         private readonly ColumnService $columnService,
-        private readonly CardReorderService $reorderService,
         private readonly BoardSerializer $boardSerializer,
+        private readonly MessageBusInterface $messageBus,
     ) {
     }
 
+    // Column create stays synchronous — single INSERT, needs real ID back
     #[Route('/api/boards/{boardUuid}/columns', name: 'column_create', methods: ['POST'], requirements: ['boardUuid' => '[0-9a-f-]{36}'])]
     public function create(string $boardUuid, Request $request): JsonResponse
     {
@@ -59,17 +63,25 @@ class ColumnController extends AbstractController
             return $this->json(['error' => 'Title must not exceed 255 characters.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $column = $this->columnService->updateColumn($id, $title, $this->getUser());
+        // Verify ownership
+        $this->columnService->verifyColumnOwnership($id, $this->getUser());
 
-        return $this->json($this->boardSerializer->serializeColumn($column));
+        // Dispatch async update
+        $this->messageBus->dispatch(new UpdateColumnMessage(columnId: $id, title: $title));
+
+        return $this->json(['status' => 'accepted'], Response::HTTP_ACCEPTED);
     }
 
     #[Route('/api/columns/{id}', name: 'column_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
     public function delete(int $id): JsonResponse
     {
-        $this->columnService->deleteColumn($id, $this->getUser());
+        // Verify ownership
+        $this->columnService->verifyColumnOwnership($id, $this->getUser());
 
-        return $this->json(null, Response::HTTP_NO_CONTENT);
+        // Dispatch async delete
+        $this->messageBus->dispatch(new DeleteColumnMessage(columnId: $id));
+
+        return $this->json(null, Response::HTTP_ACCEPTED);
     }
 
     #[Route('/api/columns/reorder', name: 'column_reorder', methods: ['PUT'])]
@@ -94,8 +106,12 @@ class ColumnController extends AbstractController
             }
         }
 
-        $this->reorderService->reorderColumns($data['boardId'], $data['orderedColumnIds'], $this->getUser());
+        // Dispatch async reorder
+        $this->messageBus->dispatch(new ReorderColumnsMessage(
+            boardUuid: $data['boardId'],
+            orderedColumnIds: $data['orderedColumnIds'],
+        ));
 
-        return $this->json(['status' => 'ok']);
+        return $this->json(['status' => 'accepted'], Response::HTTP_ACCEPTED);
     }
 }

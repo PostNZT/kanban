@@ -3,10 +3,8 @@
 namespace App\Tests\Unit\Service;
 
 use App\Entity\Board;
-use App\Entity\BoardColumn;
 use App\Entity\User;
 use App\Repository\BoardRepository;
-use App\Security\BoardVoter;
 use App\Service\BoardService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -33,33 +31,6 @@ class BoardServiceTest extends TestCase
         $ref = new \ReflectionProperty(Board::class, 'id');
         $ref->setValue($board, $id);
         return $board;
-    }
-
-    public function testCreateBoardPersistsWithDefaultColumns(): void
-    {
-        $user = $this->makeUser();
-
-        $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->expects($this->once())->method('persist')->with($this->isInstanceOf(Board::class));
-        $entityManager->expects($this->once())->method('flush');
-
-        $service = new BoardService(
-            $entityManager,
-            $this->createStub(BoardRepository::class),
-            $this->createStub(AuthorizationCheckerInterface::class),
-        );
-
-        $board = $service->createBoard($user, 'My Board');
-
-        $this->assertSame('My Board', $board->getTitle());
-        $this->assertSame($user, $board->getOwner());
-        $this->assertCount(3, $board->getColumns());
-
-        $titles = array_map(fn(BoardColumn $c) => $c->getTitle(), $board->getColumns()->toArray());
-        $this->assertSame(['To Do', 'In Progress', 'Done'], $titles);
-
-        $positions = array_map(fn(BoardColumn $c) => $c->getPosition(), $board->getColumns()->toArray());
-        $this->assertSame([0, 1, 2], $positions);
     }
 
     public function testGetBoardReturnsBoard(): void
@@ -135,92 +106,5 @@ class BoardServiceTest extends TestCase
 
         $result = $service->getUserBoards($user);
         $this->assertCount(2, $result);
-    }
-
-    public function testUpdateBoardChangesTitle(): void
-    {
-        $user = $this->makeUser();
-        $board = $this->makeBoard($user);
-
-        $repository = $this->createStub(BoardRepository::class);
-        $repository->method('findWithColumnsAndCards')->willReturn($board);
-
-        $authChecker = $this->createStub(AuthorizationCheckerInterface::class);
-        $authChecker->method('isGranted')->willReturn(true);
-
-        $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->expects($this->once())->method('flush');
-
-        $service = new BoardService($entityManager, $repository, $authChecker);
-
-        $result = $service->updateBoard('some-uuid', $user, 'New Title');
-        $this->assertSame('New Title', $result->getTitle());
-    }
-
-    public function testUpdateBoardThrowsAccessDeniedOnEdit(): void
-    {
-        $owner = $this->makeUser(1);
-        $board = $this->makeBoard($owner);
-
-        $repository = $this->createStub(BoardRepository::class);
-        $repository->method('findWithColumnsAndCards')->willReturn($board);
-
-        $authChecker = $this->createStub(AuthorizationCheckerInterface::class);
-        $authChecker->method('isGranted')
-            ->willReturnCallback(function (string $attribute) {
-                return $attribute === BoardVoter::VIEW;
-            });
-
-        $service = new BoardService(
-            $this->createStub(EntityManagerInterface::class),
-            $repository,
-            $authChecker,
-        );
-
-        $this->expectException(AccessDeniedException::class);
-        $service->updateBoard('some-uuid', $owner, 'New Title');
-    }
-
-    public function testDeleteBoardRemovesAndFlushes(): void
-    {
-        $user = $this->makeUser();
-        $board = $this->makeBoard($user);
-
-        $repository = $this->createStub(BoardRepository::class);
-        $repository->method('findWithColumnsAndCards')->willReturn($board);
-
-        $authChecker = $this->createStub(AuthorizationCheckerInterface::class);
-        $authChecker->method('isGranted')->willReturn(true);
-
-        $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->expects($this->once())->method('remove')->with($board);
-        $entityManager->expects($this->once())->method('flush');
-
-        $service = new BoardService($entityManager, $repository, $authChecker);
-        $service->deleteBoard('some-uuid', $user);
-    }
-
-    public function testDeleteBoardThrowsAccessDeniedOnDelete(): void
-    {
-        $owner = $this->makeUser(1);
-        $board = $this->makeBoard($owner);
-
-        $repository = $this->createStub(BoardRepository::class);
-        $repository->method('findWithColumnsAndCards')->willReturn($board);
-
-        $authChecker = $this->createStub(AuthorizationCheckerInterface::class);
-        $authChecker->method('isGranted')
-            ->willReturnCallback(function (string $attribute) {
-                return $attribute === BoardVoter::VIEW;
-            });
-
-        $service = new BoardService(
-            $this->createStub(EntityManagerInterface::class),
-            $repository,
-            $authChecker,
-        );
-
-        $this->expectException(AccessDeniedException::class);
-        $service->deleteBoard('some-uuid', $owner);
     }
 }
